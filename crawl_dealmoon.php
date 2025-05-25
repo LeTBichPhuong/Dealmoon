@@ -12,7 +12,6 @@ $html = $response->getContent();
 
 $crawler = new Crawler($html);
 
-// Crawl các sản phẩm
 $items = $crawler->filter('div.Topclick_R ul.Topclick_list > li')->each(function (Crawler $node) {
     $title = $node->filter('.proname')->count() ? $node->filter('.proname')->text() : null;
     $image = $node->filter('img')->count() ? $node->filter('img')->attr('src') : null;
@@ -27,7 +26,6 @@ $items = $crawler->filter('div.Topclick_R ul.Topclick_list > li')->each(function
     ];
 });
 
-// Lưu ra file JSON
 file_put_contents(__DIR__ . '/storage/app/dealmoon_data.json', json_encode($items, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
 echo "Đã crawl xong " . count($items) . " sản phẩm.\n";
