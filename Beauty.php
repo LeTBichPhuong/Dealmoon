@@ -8,7 +8,7 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 // 1. Cấu hình URL Strapi và Token API
 $strapiUrl = 'https://cms.mrcheaps.com/api/deals';
-$strapiToken = '475c4f10f36748cfe39d84f297699917a5f2873af9738859b760ce9449f7f1579305311fe7fc3ffa291f6703ffec00b88d63ecf202c980981a8db479ecc0e89cbf0763b94584016b59cb2489dab1ee8de225e9badd4b3ea545b02a211baf8a6d9389af5de7805df088624482b9ba86e4ef19b7589e2ae53ac06b565912745f7f'; 
+$token = getenv('STRAPI_TOKEN');
 
 $httpClient = HttpClient::create();
 
