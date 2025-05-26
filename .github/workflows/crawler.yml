@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Bước 2: Cài PHP 8.1
+      # Bước 2: Cài PHP 8.2
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
         with:
@@ -31,5 +31,5 @@ jobs:
       # Bước 4: Chạy file PHP crawler
       - name: Run Beauty.php crawler
         env:
-          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}   # Lấy token từ Secrets GitHub
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}   
         run: php Beauty.php
