@@ -1,35 +1,27 @@
-name: Run PHP crawler every 10 minutes
+name: Crawl Dealmoon and Push to Strapi
 
-# Sự kiện kích hoạt workflow
 on:
-  # Chạy theo lịch cron (mỗi 10 phút)
   schedule:
-    - cron: '*/10 * * * *'
-  # Cho phép bạn chạy thủ công trên giao diện GitHub
-  workflow_dispatch:
+    - cron: '*/10 * * * *'  # Chạy mỗi 10 phút
+  workflow_dispatch:        # Cho phép chạy thủ công từ GitHub UI
 
 jobs:
   run-crawler:
-    # Chọn môi trường Ubuntu mới nhất để chạy
     runs-on: ubuntu-latest
 
     steps:
-      # Bước 1: Checkout code từ repo
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Bước 2: Cài PHP 8.2
-      - name: Setup PHP 8.2
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
 
-      # Bước 3: Cài composer dependencies
       - name: Install dependencies
         run: composer install
 
-      # Bước 4: Chạy file PHP crawler
-      - name: Run Beauty.php crawler
+      - name: Run crawler
         env:
-          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}   
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
         run: php Beauty.php
