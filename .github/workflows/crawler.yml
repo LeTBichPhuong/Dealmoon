@@ -1,0 +1,35 @@
+name: Run PHP crawler every 10 minutes
+
+# Sự kiện kích hoạt workflow
+on:
+  # Chạy theo lịch cron (mỗi 10 phút)
+  schedule:
+    - cron: '*/10 * * * *'
+  # Cho phép bạn chạy thủ công trên giao diện GitHub
+  workflow_dispatch:
+
+jobs:
+  run-crawler:
+    # Chọn môi trường Ubuntu mới nhất để chạy
+    runs-on: ubuntu-latest
+
+    steps:
+      # Bước 1: Checkout code từ repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Bước 2: Cài PHP 8.1
+      - name: Setup PHP 8.1
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      # Bước 3: Cài composer dependencies
+      - name: Install dependencies
+        run: composer install
+
+      # Bước 4: Chạy file PHP crawler
+      - name: Run Beauty.php crawler
+        env:
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}   # Lấy token từ Secrets GitHub
+        run: php Beauty.php
