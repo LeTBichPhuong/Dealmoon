@@ -4,43 +4,32 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\DomCrawler\Crawler;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 
-// 1. Cấu hình URL Strapi và Token API 
+// Cấu hình
 $strapiUrl = 'https://cms.mrcheaps.com/api/deals';
-$token = getenv('STRAPI_TOKEN');
+$token = getenv('STRAPI_TOKEN'); 
 
 if (!$token) {
-    die("Vui lòng thiết lập biến môi trường STRAPI_TOKEN với token Strapi API của bạn.\n");
+    exit("Vui lòng thiết lập biến môi trường STRAPI_TOKEN với token Strapi API của bạn.\n");
 }
 
 $httpClient = HttpClient::create();
 
-// 2. Crawler
-try {
-    $response = $httpClient->request('GET', 'https://www.dealmoon.com/en/popular-deals-beauty-2');
-    $html = $response->getContent();
-} catch (\Exception $e) {
-    die("Lỗi khi lấy trang Dealmoon: " . $e->getMessage() . "\n");
-}
-
+// Crawl
+$response = $httpClient->request('GET', 'https://www.dealmoon.com/en/popular-deals-beauty-2');
+$html = $response->getContent();
 $crawler = new Crawler($html);
 
-// 3. Lấy danh sách sản phẩm
 $items = $crawler->filter('div.Topclick_R ul.Topclick_list > li')->each(function (Crawler $node) use ($httpClient) {
-    $title = $node->filter('.proname')->count() ? $node->filter('.proname')->text() : null;
+    $title = $node->filter('.proname')->count() ? trim($node->filter('.proname')->text()) : null;
     $image = $node->filter('img')->count() ? $node->filter('img')->attr('src') : null;
     $promotion = $node->filter('.propoint')->count() ? $node->filter('.propoint')->text() : null;
     $link = $node->filter('a')->count() ? $node->filter('a')->attr('href') : null;
 
-    // Chuyển link relative thành link tuyệt đối nếu cần
-    if ($link && strpos($link, 'http') !== 0) {
-        $link = 'https://www.dealmoon.com' . $link;
-    }
-
     $details = [];
 
-    // Chi tiết sản phẩm
+    // Chi tiết nội dung
     if ($link) {
         try {
             $detailResponse = $httpClient->request('GET', $link);
@@ -51,7 +40,7 @@ $items = $crawler->filter('div.Topclick_R ul.Topclick_list > li')->each(function
                 return trim($li->text());
             });
         } catch (\Exception $e) {
-            $details = ['Lỗi tải chi tiết sản phẩm'];
+            $details = ['Lỗi tải chi tiết'];
         }
     }
 
@@ -64,8 +53,9 @@ $items = $crawler->filter('div.Topclick_R ul.Topclick_list > li')->each(function
     ];
 });
 
-// 4. Hàm kiểm tra strapi
-function itemExists($httpClient, $strapiUrl, $token, $title) {
+// Hàm kiểm tra sản phẩm 
+function itemExists($httpClient, $strapiUrl, $token, $title)
+{
     try {
         $res = $httpClient->request('GET', $strapiUrl . '?filters[title][$eq]=' . urlencode($title), [
             'headers' => [
@@ -74,25 +64,24 @@ function itemExists($httpClient, $strapiUrl, $token, $title) {
         ]);
         $data = $res->toArray();
         return count($data['data']) > 0 ? $data['data'][0]['id'] : false;
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         return false;
     }
 }
 
-// 5. Gửi dữ liệu lên Strapi 
+//Gửi dữ liệu lên Strapi
 foreach ($items as $index => $item) {
-    if (empty($item['proname'])) {
-        // Bỏ qua
-        continue;
-    }
+    // bỏ qua nếu không có tên
+    if (empty($item['proname'])) continue;
 
     $payload = [
         'data' => [
             'title' => $item['proname'],
             'image' => $item['proimg'],
-            'promotion' => $item['propoint'],
             'link' => $item['a'],
-            'position' => $index + 1,
+            'order' => $index + 1,
+            'source' => 'dealmoon',
+            'crawledAt' => date('c'),
             'content' => [
                 'ck' => implode('<br>', $item['details']),
             ],
@@ -106,7 +95,7 @@ foreach ($items as $index => $item) {
 
     try {
         if ($existingId) {
-            // Cập nhật 
+            // PUT - cập nhật
             $res = $httpClient->request('PUT', $strapiUrl . '/' . $existingId, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $token,
@@ -114,9 +103,9 @@ foreach ($items as $index => $item) {
                 ],
                 'body' => json_encode($payload),
             ]);
-            echo "Cập nhật: " . $item['proname'] . " - Status: " . $res->getStatusCode() . "\n";
+            echo "Cập nhật: {$item['proname']} - Status: " . $res->getStatusCode() . "\n";
         } else {
-            // Thêm mới
+            // POST - thêm mới
             $res = $httpClient->request('POST', $strapiUrl, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $token,
@@ -124,9 +113,10 @@ foreach ($items as $index => $item) {
                 ],
                 'body' => json_encode($payload),
             ]);
-            echo "Thêm mới: " . $item['proname'] . " - Status: " . $res->getStatusCode() . "\n";
+            echo "Thêm mới: {$item['proname']} - Status: " . $res->getStatusCode() . "\n";
         }
-    } catch (TransportExceptionInterface $e) {
-        echo "Lỗi gửi: " . $e->getMessage() . "\n";
+    } catch (ClientExceptionInterface $e) {
+        echo "Lỗi gửi dữ liệu: " . $e->getMessage() . "\n";
+        echo "Response body: " . $e->getResponse()->getContent(false) . "\n";
     }
 }
